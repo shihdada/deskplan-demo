@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeskPlan 居家辦公排班系統（模擬環境）</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif; background: #f3f5f8; color: #222; }
+  header { background: #1f4e79; color: #fff; height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+  header .brand { font-size: 20px; font-weight: 600; letter-spacing: .5px; }
+  header .user { font-size: 13px; text-align: right; line-height: 1.3; }
+  .demo-tag { background: #ffd54f; color: #333; font-size: 12px; padding: 2px 8px; border-radius: 10px; margin-left: 10px; font-weight: 600; }
+
+  /* Home */
+  #home { display: flex; justify-content: center; align-items: center; gap: 60px; padding: 120px 20px; flex-wrap: wrap; }
+  .welcome h2 { margin: 0; font-size: 18px; color: #555; }
+  .welcome h1 { margin: 4px 0 18px; font-size: 32px; }
+  .btn-row { display: flex; gap: 12px; margin-bottom: 10px; }
+  .btn { border: none; border-radius: 6px; padding: 10px 18px; font-size: 15px; cursor: pointer; font-family: inherit; }
+  .btn-light { background: #e8eef5; color: #333; width: 150px; }
+  .btn-main { background: #14365c; color: #fff; width: 312px; margin-bottom: 10px; display: block; font-weight: 600; }
+  .btn-main:hover { background: #0e2a48; }
+  .notice { background: #fff; border-radius: 10px; padding: 10px 16px; width: 312px; text-align: center; font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .notice .t { font-size: 18px; color: #14365c; margin-bottom: 6px; }
+  .stats { background: #fff; border-radius: 14px; padding: 24px 36px; box-shadow: 0 2px 8px rgba(0,0,0,.08); min-width: 340px; }
+  .stats h3 { margin: 0 0 16px; font-size: 24px; text-align: center; }
+  .stat-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; margin-bottom: 8px; border-radius: 6px; background: #f7f9fb; font-size: 17px; }
+
+  /* Schedule */
+  #schedule { display: none; justify-content: center; gap: 28px; padding: 24px 20px; align-items: flex-start; flex-wrap: wrap; }
+  .side { width: 220px; }
+  .legend { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.1); overflow: hidden; }
+  .legend-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #eee; font-size: 17px; background: #fff; width: 100%; border-left: none; border-right: none; border-top: none; font-family: inherit; text-align: left; }
+  .legend-item:last-child { border-bottom: none; }
+  .legend-item.clickable { cursor: pointer; }
+  .legend-item.clickable:hover { background: #eef4fb; }
+  .legend-item .dot { width: 14px; height: 14px; border-radius: 3px; display: inline-block; margin-right: 10px; }
+  .legend-item .badge { background: #607080; color: #fff; font-size: 12px; padding: 1px 8px; border-radius: 10px; }
+  .limit { margin-top: 14px; background: #ffe2b8; border-radius: 18px; padding: 8px 14px; text-align: center; font-size: 15px; }
+  .sel-info { margin-top: 10px; text-align: center; font-size: 14px; color: #14365c; min-height: 20px; }
+
+  .cal-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,.1); padding: 18px; width: 1100px; max-width: 100%; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .nav { display: flex; gap: 6px; }
+  .nav button { background: #fff; border: 1px solid #ccc; border-radius: 4px; padding: 8px 14px; font-size: 15px; cursor: pointer; font-family: inherit; }
+  .nav button:hover { background: #f0f0f0; }
+  .month-title { font-size: 24px; font-weight: 700; }
+  .actions { display: flex; gap: 8px; min-width: 260px; justify-content: flex-end; }
+  .btn-confirm { background: #1976d2; color: #fff; border-radius: 20px; padding: 9px 18px; font-weight: 600; }
+  .btn-reset { background: #26a69a; color: #fff; border-radius: 20px; padding: 9px 18px; font-weight: 600; }
+
+  table.cal { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  table.cal th { border: 1px solid #e3e3e3; padding: 6px; font-size: 15px; color: #444; }
+  table.cal th.we { color: #aaa; }
+  table.cal td { border: 1px solid #e3e3e3; height: 88px; vertical-align: top; padding: 0; position: relative; }
+  td .num { font-size: 12px; text-align: center; color: #666; padding-top: 4px; }
+  td.we .num, td.other .num { color: #bbb; }
+  td .bar { margin-top: 6px; color: #fff; text-align: center; font-size: 15px; padding: 3px 0; font-weight: 600; }
+  td.editable { cursor: pointer; }
+  td.editable:hover { background: #f4f9ff; }
+  td.selected { background: #dcecff !important; box-shadow: inset 0 0 0 3px #1976d2; }
+  td.selected .num::after { content: " ✓ 已選取"; color: #1976d2; font-weight: 700; }
+  .today-circle { display: inline-block; border: 1.5px solid #1976d2; border-radius: 50%; padding: 1px 4px; }
+
+  .c-office { background: #2196f3; }
+  .c-wfh { background: #fb8c00; }
+  .c-leave { background: #e91e63; }
+  .c-official { background: #00897b; }
+  .c-holiday { background: #81c784; }
+
+  .readonly-note { text-align: center; font-size: 13px; color: #888; margin-top: 10px; }
+  #toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: 600; display: none; z-index: 10; box-shadow: 0 2px 10px rgba(0,0,0,.2); }
+  #toast.err { background: #d32f2f; color: #fff; }
+  #toast.ok { background: #2e7d32; color: #fff; }
+  #result { margin-top: 12px; padding: 12px; border-radius: 8px; background: #e8f5e9; color: #1b5e20; font-weight: 600; text-align: center; display: none; }
+  .back { position: fixed; right: 20px; bottom: 20px; background: #ffc107; border: none; border-radius: 20px; padding: 10px 18px; font-size: 14px; cursor: pointer; font-family: inherit; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">DeskPlan<span id="hdr-sub"></span><span class="demo-tag">模擬環境</span></div>
+  <div class="user">DEMO001<br>Demo User 示範使用者</div>
+</header>
+
+<div id="toast"></div>
+
+<!-- Home -->
+<section id="home">
+  <div class="welcome">
+    <h2>歡迎進入</h2>
+    <h1>居家辦公訂位系統</h1>
+    <div class="btn-row">
+      <button class="btn btn-light" type="button">個人資料</button>
+      <button class="btn btn-light" type="button">個人訂位</button>
+    </div>
+    <button class="btn btn-main" id="go-schedule" type="button">班表排程 📅</button>
+    <button class="btn btn-main" type="button">座位查詢 🔍</button>
+    <div class="notice">
+      <div class="t">次月居家辦公排程填報</div>
+      <div>主管：每月 16~19 日</div>
+      <div>同仁：每月 13~15 日</div>
+    </div>
+  </div>
+  <div class="stats">
+    <h3 id="stats-title"></h3>
+    <div class="stat-item"><span>🧳 辦公室</span><b id="s-office"></b></div>
+    <div class="stat-item"><span>🏠 居家辦公</span><b id="s-wfh"></b></div>
+    <div class="stat-item"><span>🌴 休假</span><b id="s-leave"></b></div>
+    <div class="stat-item"><span>🪪 公假</span><b id="s-official"></b></div>
+  </div>
+</section>
+
+<!-- Schedule -->
+<section id="schedule">
+  <div class="side">
+    <div class="legend" id="legend">
+      <button class="legend-item" type="button" data-type="office"><span><span class="dot c-office"></span>辦公室</span><span class="badge" id="b-office"></span></button>
+      <button class="legend-item" type="button" data-type="wfh"><span><span class="dot c-wfh"></span>居家辦公</span><span class="badge" id="b-wfh"></span></button>
+      <button class="legend-item" type="button" data-type="leave"><span><span class="dot c-leave"></span>休假</span><span class="badge" id="b-leave"></span></button>
+      <button class="legend-item" type="button" data-type="official"><span><span class="dot c-official"></span>公假</span><span class="badge" id="b-official"></span></button>
+    </div>
+    <div class="limit" id="limit-box">居家天數上限: 8 天</div>
+    <div class="sel-info" id="sel-info"></div>
+  </div>
+  <div class="cal-card">
+    <div class="toolbar">
+      <div class="nav">
+        <button id="prev" type="button" aria-label="上個月">&lt;</button>
+        <button id="next" type="button" aria-label="下個月">&gt;</button>
+        <button id="today" type="button">Today</button>
+      </div>
+      <div class="month-title" id="month-title"></div>
+      <div class="actions" id="actions">
+        <button class="btn btn-confirm" id="confirm" type="button">✔ 確認排班</button>
+        <button class="btn btn-reset" id="reset" type="button">⟳ 重新整理</button>
+      </div>
+    </div>
+    <table class="cal">
+      <thead><tr>
+        <th class="we">星期日</th><th>星期一</th><th>星期二</th><th>星期三</th><th>星期四</th><th>星期五</th><th class="we">星期六</th>
+      </tr></thead>
+      <tbody id="cal-body"></tbody>
+    </table>
+    <div class="readonly-note" id="ro-note"></div>
+    <div id="result"></div>
+  </div>
+  <button class="back" id="back" type="button">‹ 回首頁</button>
+</section>
+
+<script>
+(function () {
+  var MAX_WFH = 8;
+  var LABEL = { office: "辦公室", wfh: "居家辦公", leave: "休假", official: "公假" };
+  // 政府行政機關平日放假日（115、116 年）
+  var HOLIDAYS = {
+    "2026-01-01": "開國紀念日", "2026-02-16": "春節", "2026-02-17": "春節", "2026-02-18": "春節",
+    "2026-02-19": "春節", "2026-02-20": "春節", "2026-02-27": "和平紀念日", "2026-04-03": "兒童節",
+    "2026-04-06": "清明節", "2026-05-01": "勞動節", "2026-06-19": "端午節", "2026-09-25": "中秋節",
+    "2026-09-28": "教師節", "2026-10-09": "國慶日", "2026-10-26": "光復節", "2026-12-25": "行憲紀念日",
+    "2027-01-01": "開國紀念日", "2027-02-04": "小年夜", "2027-02-05": "除夕", "2027-02-08": "春節",
+    "2027-02-09": "春節", "2027-02-10": "春節", "2027-03-01": "和平紀念日", "2027-04-05": "清明節",
+    "2027-04-06": "兒童節", "2027-04-30": "勞動節", "2027-06-09": "端午節", "2027-09-15": "中秋節",
+    "2027-09-28": "教師節", "2027-10-11": "國慶日", "2027-10-25": "光復節", "2027-12-24": "行憲紀念日",
+    "2027-12-31": "開國紀念日"
+  };
+
+  var now = new Date();
+  var cur = { y: now.getFullYear(), m: now.getMonth() };          // m: 0-11
+  var nxt = cur.m === 11 ? { y: cur.y + 1, m: 0 } : { y: cur.y, m: cur.m + 1 };
+  var view = { y: cur.y, m: cur.m };
+
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function key(y, m, d) { return y + "-" + pad(m + 1) + "-" + pad(d); }
+  function daysIn(y, m) { return new Date(y, m + 1, 0).getDate(); }
+  function isWeekend(y, m, d) { var w = new Date(y, m, d).getDay(); return w === 0 || w === 6; }
+  function sameMonth(a, b) { return a.y === b.y && a.m === b.m; }
+  function monthLabel(v) { return v.y + "/" + pad(v.m + 1); }
+
+  // 儲存的班表（只在本瀏覽器）
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem("deskplan-demo") || "{}") || {}; } catch (e) { saved = {}; }
+  function persist() { try { localStorage.setItem("deskplan-demo", JSON.stringify(saved)); } catch (e) {} }
+
+  // 本月預設班表：每週三、週五居家（最多 8 天），其餘辦公室
+  function defaultType(y, m, d) {
+    if (sameMonth({ y: y, m: m }, nxt)) return "office";
+    var w = new Date(y, m, d).getDay();
+    return (w === 3 || w === 5) ? "wfh" : "office";
+  }
+  function baseSchedule(y, m) {
+    var s = {}, wfh = 0;
+    for (var d = 1; d <= daysIn(y, m); d++) {
+      var k = key(y, m, d);
+      if (isWeekend(y, m, d) || HOLIDAYS[k]) continue;
+      var t = saved[k] || defaultType(y, m, d);
+      if (t === "wfh" && !saved[k]) { if (wfh >= MAX_WFH) t = "office"; }
+      if (t === "wfh") wfh++;
+      s[k] = t;
+    }
+    return s;
+  }
+
+  var draft = baseSchedule(nxt.y, nxt.m);   // 下個月的編輯草稿
+  var selected = {};
+
+  function scheduleFor(v) { return sameMonth(v, nxt) ? draft : baseSchedule(v.y, v.m); }
+  function counts(s) {
+    var c = { office: 0, wfh: 0, leave: 0, official: 0 };
+    for (var k in s) c[s[k]]++;
+    return c;
+  }
+
+  var toastTimer;
+  function toast(msg, kind) {
+    var t = document.getElementById("toast");
+    t.textContent = msg; t.className = kind; t.style.display = "block";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.style.display = "none"; }, 4000);
+  }
+
+  function renderHome() {
+    var c = counts(baseSchedule(cur.y, cur.m));
+    document.getElementById("stats-title").textContent = monthLabel(cur) + " 出勤狀況統計";
+    ["office", "wfh", "leave", "official"].forEach(function (t) {
+      document.getElementById("s-" + t).textContent = c[t] + " 天";
+    });
+  }
+
+  function renderCal() {
+    var editable = sameMonth(view, nxt);
+    var s = scheduleFor(view);
+    document.getElementById("month-title").textContent = monthLabel(view);
+    document.getElementById("actions").style.visibility = editable ? "visible" : "hidden";
+    document.getElementById("limit-box").style.display = editable ? "block" : "none";
+    document.getElementById("ro-note").textContent = editable ? "" :
+      (sameMonth(view, cur) ? "本月班表僅供檢視。請切換到下個月進行排班。" : "此月份目前未開放排班，僅能排下個月。");
+    document.querySelectorAll(".legend-item").forEach(function (el) { el.classList.toggle("clickable", editable); });
+
+    var c = counts(s);
+    ["office", "wfh", "leave", "official"].forEach(function (t) {
+      document.getElementById("b-" + t).textContent = "x " + c[t];
+    });
+
+    var nSel = Object.keys(selected).length;
+    document.getElementById("sel-info").textContent = editable && nSel ? "已選取 " + nSel + " 天" : "";
+
+    var body = document.getElementById("cal-body");
+    body.innerHTML = "";
+    var first = new Date(view.y, view.m, 1).getDay();
+    var total = daysIn(view.y, view.m);
+    var day = 1 - first;
+    while (day <= total) {
+      var tr = document.createElement("tr");
+      for (var i = 0; i < 7; i++, day++) {
+        var td = document.createElement("td");
+        if (day >= 1 && day <= total) {
+          var k = key(view.y, view.m, day);
+          var we = isWeekend(view.y, view.m, day);
+          var isToday = sameMonth(view, cur) && day === now.getDate();
+          td.dataset.date = k;
+          if (we) td.className = "we";
+          var num = document.createElement("div");
+          num.className = "num";
+          num.innerHTML = isToday ? '<span class="today-circle">' + day + "日</span>" : day + "日";
+          td.appendChild(num);
+          if (HOLIDAYS[k]) {
+            var hb = document.createElement("div");
+            hb.className = "bar c-holiday"; hb.textContent = HOLIDAYS[k];
+            td.appendChild(hb);
+          } else if (!we && s[k]) {
+            var b = document.createElement("div");
+            b.className = "bar c-" + s[k]; b.textContent = LABEL[s[k]];
+            td.appendChild(b);
+            if (editable) {
+              td.classList.add("editable");
+              if (selected[k]) td.classList.add("selected");
+            }
+          }
+        } else {
+          td.className = "other";
+        }
+        tr.appendChild(td);
+      }
+      body.appendChild(tr);
+    }
+  }
+
+  // 點日期：選取 / 取消選取
+  document.getElementById("cal-body").addEventListener("click", function (e) {
+    var td = e.target.closest("td.editable");
+    if (!td) return;
+    var k = td.dataset.date;
+    if (selected[k]) delete selected[k]; else selected[k] = true;
+    renderCal();
+  });
+
+  // 點左側類別：套用到已選取的日期
+  document.getElementById("legend").addEventListener("click", function (e) {
+    var item = e.target.closest(".legend-item");
+    if (!item || !sameMonth(view, nxt)) return;
+    var type = item.dataset.type;
+    var keys = Object.keys(selected);
+    if (!keys.length) { toast("請先在月曆上點選日期", "err"); return; }
+    if (type === "wfh") {
+      var after = counts(draft).wfh;
+      keys.forEach(function (k) { if (draft[k] !== "wfh") after++; });
+      if (after > MAX_WFH) {
+        toast("⚠ 居家辦公超過上限 " + MAX_WFH + " 天（將變成 " + after + " 天），請減少選取的日期", "err");
+        return;
+      }
+    }
+    keys.forEach(function (k) { draft[k] = type; });
+    selected = {};
+    document.getElementById("result").style.display = "none";
+    renderCal();
+  });
+
+  document.getElementById("confirm").addEventListener("click", function () {
+    var keysSel = Object.keys(selected);
+    if (keysSel.length) { toast("尚有已選取但未設定類別的日期，請先點選左側類別", "err"); return; }
+    for (var k in draft) saved[k] = draft[k];
+    persist();
+    var c = counts(draft);
+    var wfhDays = Object.keys(draft).filter(function (k) { return draft[k] === "wfh"; })
+      .map(function (k) { return +k.slice(8); }).sort(function (a, b) { return a - b; });
+    var r = document.getElementById("result");
+    r.textContent = "✅ 排班成功！" + monthLabel(nxt) + " 已登記居家辦公 " + c.wfh + " 天" +
+      (wfhDays.length ? "：" + wfhDays.join("、") + " 日" : "");
+    r.style.display = "block";
+    toast("✅ 排班成功", "ok");
+    renderHome();
+  });
+
+  document.getElementById("reset").addEventListener("click", function () {
+    draft = baseSchedule(nxt.y, nxt.m);
+    selected = {};
+    document.getElementById("result").style.display = "none";
+    renderCal();
+  });
+
+  function shift(delta) {
+    var m = view.m + delta, y = view.y;
+    if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
+    view = { y: y, m: m };
+    selected = {};
+    renderCal();
+  }
+  document.getElementById("prev").addEventListener("click", function () { shift(-1); });
+  document.getElementById("next").addEventListener("click", function () { shift(1); });
+  document.getElementById("today").addEventListener("click", function () {
+    view = { y: cur.y, m: cur.m }; selected = {}; renderCal();
+  });
+
+  function showView() {
+    var onSchedule = location.hash === "#schedule";
+    document.getElementById("home").style.display = onSchedule ? "none" : "flex";
+    document.getElementById("schedule").style.display = onSchedule ? "flex" : "none";
+    document.getElementById("hdr-sub").textContent = onSchedule ? " / 居家辦公個人排程" : "";
+    if (onSchedule) { view = { y: cur.y, m: cur.m }; selected = {}; renderCal(); } else { renderHome(); }
+  }
+  document.getElementById("go-schedule").addEventListener("click", function () {
+    if (location.hash === "#schedule") showView(); else location.hash = "schedule";
+  });
+  document.getElementById("back").addEventListener("click", function () { location.hash = ""; showView(); });
+  window.addEventListener("hashchange", showView);
+  showView();
+})();
+</script>
+</body>
+</html>
