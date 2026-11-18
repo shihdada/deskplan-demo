@@ -179,6 +179,8 @@
 
   // 儲存的班表（只在本瀏覽器）
   var saved = {};
+  // 示範用：網址帶 ?reset=1 時清空先前儲存的排班，讓每次 demo 從頭開始
+  try { if (/[?&]reset=1/.test(location.search)) localStorage.removeItem("deskplan-demo"); } catch (e) {}
   try { saved = JSON.parse(localStorage.getItem("deskplan-demo") || "{}") || {}; } catch (e) { saved = {}; }
   function persist() { try { localStorage.setItem("deskplan-demo", JSON.stringify(saved)); } catch (e) {} }
 
@@ -242,8 +244,9 @@
       document.getElementById("b-" + t).textContent = "x " + c[t];
     });
 
-    var nSel = Object.keys(selected).length;
-    document.getElementById("sel-info").textContent = editable && nSel ? "已選取 " + nSel + " 天" : "";
+    var selDays = Object.keys(selected).map(function (k) { return +k.slice(8); }).sort(function (a, b) { return a - b; });
+    document.getElementById("sel-info").textContent = editable && selDays.length ?
+      "已選取 " + selDays.length + " 天：" + selDays.join("、") + " 日" : "";
 
     var body = document.getElementById("cal-body");
     body.innerHTML = "";
